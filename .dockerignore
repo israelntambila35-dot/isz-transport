@@ -1,0 +1,16 @@
+# Exclu du contexte de construction (image plus petite et plus sûre)
+node_modules
+.next
+.git
+db
+download
+tool-results
+agent-ctx
+mini-services
+examples
+dev.log
+server.log
+*.log
+.DS_Store
+data
+.env

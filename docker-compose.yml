@@ -1,0 +1,19 @@
+# ============================================================
+# ISZTRANSPORT — lancement longue durée en une commande
+#   docker compose up -d --build
+# Les données restent dans ./data (sauvegardez ce dossier !)
+# ============================================================
+services:
+  isztransport:
+    build: .
+    container_name: isztransport
+    ports:
+      - "3000:3000"
+    environment:
+      # Fichier SQLite dans le volume persistant ci-dessous.
+      # Ne pointez JAMAIS vers un dossier éphémère du conteneur.
+      - DATABASE_URL=file:/data/custom.db
+      # Redéfinir le port exposé si besoin : "- 8080:3000"
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
