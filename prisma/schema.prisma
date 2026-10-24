@@ -1,0 +1,155 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Ligne singleton de l'application (id = "settings").
+// Les champs de prix servent de valeurs de départ pour la première voiture ;
+// chaque voiture possède ensuite ses propres paramètres (modèle Car).
+model Settings {
+  id                  String    @id @default("settings")
+  activeCarId         String    @default("default")
+  // Valeurs héritées (seed de la première voiture) — conservées pour la
+  // compatibilité des anciennes sauvegardes.
+  carPriceUsd         Float     @default(3000)
+  exchangeRate        Float     @default(2350)
+  dailyRevenue        Float     @default(30000)
+  activeDaysPerWeek   Int       @default(5)
+  weeklySavingsTarget Float     @default(100000)
+  startDate           DateTime  @default(now())
+  // Verrou personnel (accès multi-appareils) : hash SHA-256 du code
+  // d'accès. Null → l'espace n'est pas verrouillé.
+  accessCodeHash      String?
+  accessCodeUpdatedAt DateTime?
+  updatedAt           DateTime  @updatedAt
+}
+
+// Un compte voiture géré par le propriétaire (application privée,
+// plusieurs voitures possibles). Chaque voiture a ses propres paramètres.
+model Car {
+  id                  String          @id @default(cuid())
+  name                String
+  carPriceUsd         Float           @default(3000)
+  exchangeRate        Float           @default(2350)
+  dailyRevenue        Float           @default(30000)
+  activeDaysPerWeek   Int             @default(5)
+  weeklySavingsTarget Float           @default(100000)
+  startDate           DateTime        @default(now())
+  // Soldes de départ de la caisse (avant tout versement / retrait suivi) :
+  // ce que le propriétaire avait déjà en espèces et en banque.
+  openingEspeces      Float           @default(0)
+  openingBanque       Float           @default(0)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  weeks               WeeklyEntry[]
+  withdrawals         Withdrawal[]
+  cashMovements       CashMovement[]
+  loans               Loan[]
+}
+
+// Une semaine de travail créée par l'utilisateur : il choisit lui-même
+// le jour de début (weekStart) et le jour de fin (weekEnd) en cliquant
+// sur le calendrier. weekEnd = null → semaine classique de 7 jours.
+model WeeklyEntry {
+  id                 String     @id @default(cuid())
+  carId              String?
+  car                Car?       @relation(fields: [carId], references: [id], onDelete: Cascade)
+  weekStart          DateTime
+  weekEnd            DateTime?
+  revenueWeek        Float      @default(0)
+  savedAmount        Float      @default(0)
+  fuelExpense        Float      @default(0)
+  maintenanceExpense Float      @default(0)
+  driverSaturday     Float      @default(0)
+  otherExpenses      Float      @default(0)
+  // Comment le montant a été encaissé : « especes » ou « banque »
+  paymentMethod      String     @default("especes")
+  note               String?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  days               DayEntry[] // Détail jour par jour (lundi 16, mardi 17…)
+
+  @@unique([carId, weekStart])
+}
+
+// Détail d'une semaine jour par jour (le montant versé par le chauffeur
+// est saisi chaque jour individuellement : le 16, le 17, le 18…)
+model DayEntry {
+  id          String      @id @default(cuid())
+  weekId      String
+  week        WeeklyEntry @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  dayIndex    Int
+  date        DateTime
+  revenue     Float       @default(0)
+  savedAmount Float       @default(0)
+  expense     Float       @default(0)
+  note        String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([weekId, dayIndex])
+}
+
+// Retrait d'argent sur une date précise (déduit de l'épargne disponible)
+model Withdrawal {
+  id            String   @id @default(cuid())
+  carId         String?
+  car           Car?     @relation(fields: [carId], references: [id], onDelete: Cascade)
+  date          DateTime
+  amount        Float
+  // D'où l'argent a été pris : « especes » (caisse) ou « banque »
+  paymentMethod String   @default("especes")
+  note          String?
+  createdAt     DateTime @default(now())
+}
+
+// Mouvement manuel de caisse : argent ajouté (entrée) ou sorti (sortie)
+// en dehors des versements du chauffeur et des retraits enregistrés
+// (dépôt personnel, dépense hors suivi, ajustement…).
+model CashMovement {
+  id        String   @id @default(cuid())
+  carId     String?
+  car       Car?     @relation(fields: [carId], references: [id], onDelete: Cascade)
+  date      DateTime
+  // Sur quel compte : « especes » (caisse) ou « banque »
+  mode      String   @default("especes")
+  // Sens du mouvement : « entree » (ajout) ou « sortie » (argent sorti)
+  direction String   @default("entree")
+  amount    Float
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Prêt (argent donné à quelqu'un) ou emprunt (argent reçu de quelqu'un),
+// géré manuellement avec suivi des remboursements.
+model Loan {
+  id           String    @id @default(cuid())
+  carId        String?
+  car          Car?      @relation(fields: [carId], references: [id], onDelete: Cascade)
+  // « pret » = argent prêté à quelqu'un ; « emprunt » = argent emprunté
+  kind         String    @default("pret")
+  person       String
+  amount       Float
+  date         DateTime
+  dueDate      DateTime?
+  repaidAmount Float     @default(0)
+  note         String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+// Session d'authentification (connexion par code d'accès).
+// Le navigateur ne reçoit jamais le hash ni le code : uniquement un
+// jeton aléatoire opaque (cookie HttpOnly « isz_session ») dont seul le
+// hash SHA-256 est stocké ici. Toute session expire après 60 jours.
+model AuthSession {
+  id        String   @id // hash SHA-256 du jeton de session
+  createdAt DateTime @default(now())
+  lastSeen  DateTime @default(now())
+  expiresAt DateTime
+}
