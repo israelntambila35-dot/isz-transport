@@ -1,0 +1,56 @@
+{
+  "name": "ISZTRANSPORT — Gestion voiture de transport",
+  "short_name": "ISZTRANSPORT",
+  "description": "Suivi des recettes, de l'épargne, des dépenses et calcul du remboursement de votre voiture de transport (FC / USD). Fonctionne hors ligne.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#059669",
+  "categories": ["finance", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ouvrir le calendrier",
+      "short_name": "Calendrier",
+      "description": "Créer une semaine et saisir les montants versés jour par jour",
+      "url": "/?tab=calendrier",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Tableau de bord",
+      "short_name": "Tableau",
+      "description": "Voir l'avancement du remboursement",
+      "url": "/?tab=dashboard",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}
